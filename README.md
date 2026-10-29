@@ -198,19 +198,20 @@ In this mode, `colab_chaplin_server.py` is pasted and run as a single cell in Go
 1. **Installs all dependencies** (FastAPI, uvicorn, hydra, sentencepiece) in the Colab environment
 2. **Clones RetinaFace and FAN** from GitHub (shallow clone, ~2 seconds)
 3. **Downloads the Auto-AVSR model weights** from Hugging Face (`Amanvir/LRS3_V_WER19.1`)
-4. **Downloads and installs Cloudflare Tunnel** (`cloudflared`) to expose the Colab server publicly via a `*.trycloudflare.com` HTTPS URL — no Ngrok account or token required
+4. **Downloads and installs Cloudflare Tunnel** (`cloudflared`) to create a public HTTPS tunnel — no Ngrok account or token required
 5. Starts the FastAPI inference server on port `8001` inside Colab
-6. Outputs the public tunnel URL, which is then set in the local backend''s `.env` as `CHAPLIN_URL`
+6. Prints a public tunnel URL at the end of the cell output — copy this URL
 7. Additionally loads **Qwen 2.5 (0.5B-Instruct)** as a neural LM corrector for superior phoneme disambiguation
 
 **How to run:**
 1. Open [Google Colab](https://colab.research.google.com) and create a new notebook
 2. Set Runtime → Change runtime type → **T4 GPU**
 3. Paste the entire contents of `colab_chaplin_server.py` into a cell and run it
-4. Copy the printed `*.trycloudflare.com` tunnel URL from the output
-5. Set it in `backend/.env`:
+4. Wait for the cell to finish setup — it will print a public tunnel URL at the bottom
+5. Copy that URL and paste it into `backend/.env` as the value for `VSR_API_URL` with `/predict` appended:
    ```
-   CHAPLIN_URL=https://your-tunnel-url.trycloudflare.com
+   RECOGNITION_MODE=colab
+   VSR_API_URL=https://<your-printed-tunnel-url>/predict
    ```
 
 ---
@@ -271,9 +272,8 @@ python -m venv venv
 # 3. Install dependencies
 pip install -r requirements.txt
 
-# 4. Copy and configure environment variables
-copy .env.example .env
-# Edit .env and set CHAPLIN_URL to your inference engine address
+# 4. Create your .env file (see Configuration section below for content)
+# Create a new file named .env inside the backend/ folder
 
 # 5. Start the FastAPI backend
 uvicorn main:app --reload --host 127.0.0.1 --port 8000
@@ -301,17 +301,32 @@ The frontend will be available at `http://localhost:5173`.
 
 ## Configuration
 
-The backend is configured via `backend/.env`:
+The `.env` file is **not included in the repository** for security. You must create it manually.
+
+Create a file named `.env` inside the `backend/` folder and paste the following content:
 
 ```env
-# URL of the active Chaplin inference engine
-# For Local mode: http://127.0.0.1:8001
-# For Colab mode: https://your-tunnel.trycloudflare.com
-CHAPLIN_URL=http://127.0.0.1:8001
+# ==============================================================================
+# LIP READING ENGINE CONFIGURATION
+# To switch between modes, comment/uncomment the corresponding lines below.
+# ==============================================================================
+
+# MODE 1: GOOGLE COLAB (CLOUD GPU)
+# Run colab_chaplin_server.py in Google Colab, copy the tunnel URL it prints,
+# and paste it below with /predict appended:
+#RECOGNITION_MODE=colab
+#VSR_API_URL=https://<your-colab-tunnel-url>/predict
+
+# MODE 2: LOCAL GPU (ON-DEVICE)
+# Run local_chaplin_server.py on your local machine and uncomment below:
+RECOGNITION_MODE=local
+VSR_API_URL=http://127.0.0.1:8001/predict
 
 # Allowed CORS origin for the frontend
 ALLOWED_ORIGIN=http://localhost:5173
 ```
+
+> To switch modes, simply comment out one block and uncomment the other, then **restart the FastAPI backend** — no code changes needed.
 
 ---
 
